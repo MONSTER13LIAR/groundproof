@@ -407,3 +407,5 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 #legend i.loss { background: #c6431f; }
 #legend i.gain { background: #2e7a8a; }
 #legend span + i { margin-left: 6px; }
+
+#legend b { font-weight: 500; color: var(--ink); margin-right: 2px; }

@@ -267,29 +267,31 @@ thresholdEl.addEventListener("input", () => {
 
 const MASK = "change-mask";
 
+/**
+ * The mask belongs on the after map only: it describes what the ground lost
+ * by that date, so painting it over the before image would misread as
+ * evidence that already existed then.
+ */
 function applyMask() {
   if (!scenes) return;
-  for (const map of [mapBefore, mapAfter]) {
-    if (map.getLayer(MASK)) map.removeLayer(MASK);
-    if (map.getSource(MASK)) map.removeSource(MASK);
-    map.addSource(MASK, {
-      type: "raster",
-      tiles: [maskTiles(scenes.before.id, scenes.after.id, threshold(), ring)],
-      tileSize: 256,
-    });
-    map.addLayer({ id: MASK, type: "raster", source: MASK });
-    for (const id of ["draw-fill", "draw-line", "draw-verts"]) {
-      if (map.getLayer(id)) map.moveLayer(id);
-    }
+  const map = mapAfter;
+  if (map.getLayer(MASK)) map.removeLayer(MASK);
+  if (map.getSource(MASK)) map.removeSource(MASK);
+  map.addSource(MASK, {
+    type: "raster",
+    tiles: [maskTiles(scenes.before.id, scenes.after.id, threshold(), ring)],
+    tileSize: 256,
+  });
+  map.addLayer({ id: MASK, type: "raster", source: MASK });
+  for (const id of ["draw-fill", "draw-line", "draw-verts"]) {
+    if (map.getLayer(id)) map.moveLayer(id);
   }
 }
 
 $("mask-on").addEventListener("change", (e) => {
   const on = (e.target as HTMLInputElement).checked;
-  for (const map of [mapBefore, mapAfter]) {
-    if (map.getLayer(MASK)) {
-      map.setLayoutProperty(MASK, "visibility", on ? "visible" : "none");
-    }
+  if (mapAfter.getLayer(MASK)) {
+    mapAfter.setLayoutProperty(MASK, "visibility", on ? "visible" : "none");
   }
   $("legend").hidden = !on;
 });
