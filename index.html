@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Groundproof</title>
+    <meta
+      name="description"
+      content="Turn illegal dumping into dated satellite evidence. Draw the site, pick two dates, get a citable record."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body>
+    <div id="stage">
+      <div id="map-before"></div>
+      <div id="map-after"></div>
+      <div id="swipe" hidden>
+        <button id="swipe-handle" aria-label="Drag to compare dates"></button>
+      </div>
+      <div id="stamp-before" class="stamp" hidden></div>
+      <div id="stamp-after" class="stamp stamp-right" hidden></div>
+    </div>
+
+    <aside id="panel">
+      <header class="brand">
+        <h1>Groundproof</h1>
+        <p class="tagline">
+          Complaints get dismissed. A satellite&rsquo;s timestamp does not.
+        </p>
+      </header>
+
+      <ol class="steps">
+        <li class="step" data-step="1">
+          <div class="step-head">
+            <span class="num">1</span>
+            <h2>Outline the site</h2>
+          </div>
+          <p class="help" id="draw-help">
+            Click to place corners on the map. Press <kbd>Enter</kbd> or click the first
+            corner again to close the shape.
+          </p>
+          <div class="row">
+            <button id="btn-draw" class="primary">Start drawing</button>
+            <button id="btn-clear" class="ghost" disabled>Clear</button>
+          </div>
+          <dl class="readout" id="area-readout" hidden>
+            <div><dt>Area</dt><dd id="area-val"></dd></div>
+            <div><dt>Corners</dt><dd id="vertex-val"></dd></div>
+          </dl>
+        </li>
+
+        <li class="step" data-step="2">
+          <div class="step-head">
+            <span class="num">2</span>
+            <h2>Pick two windows</h2>
+          </div>
+          <p class="help">
+            A window, not a date &mdash; a satellite only passes every few days, and
+            monsoon cloud hides most of them.
+          </p>
+          <div class="windows">
+            <label>
+              <span>Before</span>
+              <input type="date" id="before-from" value="2019-11-01" />
+              <input type="date" id="before-to" value="2019-12-31" />
+            </label>
+            <label>
+              <span>After</span>
+              <input type="date" id="after-from" value="2026-03-01" />
+              <input type="date" id="after-to" value="2026-06-15" />
+            </label>
+          </div>
+          <button id="btn-search" class="primary" disabled>Find clearest passes</button>
+          <p class="status" id="search-status" hidden></p>
+        </li>
+
+        <li class="step" data-step="3">
+          <div class="step-head">
+            <span class="num">3</span>
+            <h2>The evidence</h2>
+          </div>
+          <div id="packet" hidden>
+            <div class="scenes">
+              <article class="scene" id="scene-before">
+                <span class="label">Before</span>
+                <p class="date"></p>
+                <p class="cloud"></p>
+                <code class="id"></code>
+              </article>
+              <article class="scene" id="scene-after">
+                <span class="label">After</span>
+                <p class="date"></p>
+                <p class="cloud"></p>
+                <code class="id"></code>
+              </article>
+            </div>
+
+            <div class="pending">
+              <h3>Change mask</h3>
+              <p>
+                Not wired yet. Next: pull the red/NIR bands for both scenes and compute
+                the changed area inside the outline.
+              </p>
+            </div>
+
+            <p class="coords" id="packet-coords"></p>
+            <button id="btn-export" class="ghost" disabled>
+              Export evidence packet &mdash; not wired
+            </button>
+          </div>
+          <p class="help" id="packet-empty">
+            Outline a site and find two passes to build the record.
+          </p>
+        </li>
+      </ol>
+
+      <footer>
+        <p class="caveat">
+          Evidence of change on the ground, not proof of who caused it. Sentinel&#8209;2
+          resolves 10&nbsp;m &mdash; a single truckload will not show.
+        </p>
+        <p class="source">
+          Imagery: Copernicus Sentinel&#8209;2 L2A via Microsoft Planetary Computer.
+          Basemap &copy; OpenStreetMap contributors, OpenFreeMap.
+        </p>
+      </footer>
+    </aside>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
