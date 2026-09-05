@@ -3,6 +3,8 @@
 Turn illegal dumping into dated satellite evidence. Draw a site, pick two dates,
 and get a measured, citable record of what the ground lost.
 
+**[Open Groundproof &rarr;](https://monster13liar.github.io/groundproof/)**
+
 ---
 
 ## The problem
