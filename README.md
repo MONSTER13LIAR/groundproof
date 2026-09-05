@@ -27,7 +27,8 @@ protected land lost vegetation cover, per Sentinel-2 scene `S2A_…`, acquired
 
 ## What it does
 
-1. **Outline the site.** Click corners on the map; area is computed geodesically.
+1. **Find and outline the site.** Search for a place, then click corners on the map;
+   area is computed geodesically.
 2. **Pick two windows.** It searches the Sentinel-2 archive and takes the
    least-cloudy pass in each, pinning both to the same MGRS tile so the two images
    cover identical ground.
@@ -44,12 +45,13 @@ should read as unchanged over the same period, through the same seasonal shift.
 
 | Site | Lost cover | Share of site | Gained cover | Loss : gain |
 |---|---|---|---|---|
-| Bandhwari legacy dump | 19.36 ha | **14.5%** | 1.84 ha | 10.5 : 1 |
-| Ridge forest (control) | 0.52 ha | **0.4%** | 4.89 ha | net greener |
+| Bandhwari waste site | 14.01 ha | **13.3%** | 1,271 m² | **110 : 1** |
+| Ridge forest (control) | 0.52 ha | **0.4%** | 4.89 ha | **0.1 : 1** |
 
-Both from 1 Dec 2019 to 26 Nov 2025, same tile, same threshold. The dump separates
-from the control by a factor of 36, and the control comes back slightly greener —
-regrowth, which is what undisturbed forest should do.
+Both from 16 Nov 2019 to 29 Nov 2025, same MGRS tile, same threshold, same seasonal
+window. The waste site separates from the control by a factor of 33 on lost area,
+and by three orders of magnitude on the loss-to-gain ratio. The control comes back
+slightly greener — regrowth, which is what undisturbed forest should do.
 
 That gap is the reason the loss-to-gain ratio is reported everywhere the loss figure
 appears. **Roughly balanced loss and gain means the scene simply moved** — season,
@@ -71,6 +73,7 @@ like. Without that test a red map is just a pattern.
 | [Copernicus Sentinel-2 L2A](https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-2) | Surface reflectance, both dates | Open |
 | [Microsoft Planetary Computer](https://planetarycomputer.microsoft.com/) | STAC search, tiling, zonal statistics | No key required |
 | [OpenFreeMap](https://openfreemap.org/) / OpenStreetMap | Basemap | Open |
+| [Nominatim](https://nominatim.openstreetmap.org/) | Place search | Open |
 
 ## Running it
 

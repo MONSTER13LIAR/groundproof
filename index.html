@@ -44,6 +44,11 @@
             <span class="num">1</span>
             <h2>Outline the site</h2>
           </div>
+          <form id="find" autocomplete="off">
+            <input id="q" type="search" placeholder="Find a place to inspect" aria-label="Find a place" />
+            <button type="submit" class="ghost">Go</button>
+          </form>
+          <ul id="results" hidden></ul>
           <p class="help" id="draw-help">
             Click to place corners on the map. Press <kbd>Enter</kbd> or click the first
             corner again to close the shape.
@@ -54,7 +59,7 @@
           </div>
           <div class="presets">
             <span>Or load:</span>
-            <button class="chip" data-preset="bandhwari">Bandhwari dump</button>
+            <button class="chip" data-preset="bandhwari">Bandhwari waste site</button>
             <button class="chip" data-preset="control">Ridge forest (control)</button>
           </div>
           <dl class="readout" id="area-readout" hidden>

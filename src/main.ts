@@ -8,6 +8,7 @@ import { maskTiles, registerChangeProtocol } from "./changemask";
 import { classify, measureChange, type ChangeMeasure } from "./measure";
 import { packetHtml } from "./packet";
 import { PRESETS } from "./presets";
+import { geocode } from "./geocode";
 
 registerChangeProtocol();
 
@@ -250,7 +251,7 @@ for (const btn of document.querySelectorAll<HTMLButtonElement>(".chip")) {
     const preset = PRESETS[btn.dataset.preset!];
     draw.set(preset.ring);
     const [w, s_, e, n] = bbox(preset.ring);
-    mapAfter.fitBounds([[w, s_], [e, n]], { padding: 140, duration: 700 });
+    mapAfter.fitBounds([[w, s_], [e, n]], { padding: 120, duration: 700 });
     $("draw-help").textContent = `Loaded ${preset.label}. Redraw to adjust it.`;
   });
 }
@@ -408,3 +409,42 @@ $("btn-export").addEventListener("click", () => {
 });
 
 applySplit();
+
+// ---------- place search ----------
+
+const results = $<HTMLUListElement>("results");
+
+$("find").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const query = $<HTMLInputElement>("q").value.trim();
+  if (!query) return;
+
+  results.hidden = false;
+  results.innerHTML = "<li>Searching…</li>";
+
+  try {
+    const places = await geocode(query);
+    if (!places.length) {
+      results.innerHTML = "<li>Nothing found.</li>";
+      return;
+    }
+    results.innerHTML = "";
+    for (const place of places) {
+      const li = document.createElement("li");
+      li.textContent = place.label;
+      li.addEventListener("click", () => {
+        if (place.bbox) {
+          const [w, s_, e_, n] = place.bbox;
+          mapAfter.fitBounds([[w, s_], [e_, n]], { padding: 90, maxZoom: 15.5, duration: 800 });
+        } else {
+          mapAfter.flyTo({ center: [place.lon, place.lat], zoom: 14.5 });
+        }
+        results.hidden = true;
+        $("draw-help").textContent = "Now outline the site: click corners, Enter to close.";
+      });
+      results.appendChild(li);
+    }
+  } catch (err) {
+    results.innerHTML = `<li>${(err as Error).message}</li>`;
+  }
+});
