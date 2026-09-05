@@ -24,6 +24,10 @@
       </div>
       <div id="stamp-before" class="stamp" hidden></div>
       <div id="stamp-after" class="stamp stamp-right" hidden></div>
+      <div id="legend" hidden>
+        <i class="loss"></i><span>Lost cover</span>
+        <i class="gain"></i><span>Gained cover</span>
+      </div>
     </div>
 
     <aside id="panel">
@@ -48,6 +52,11 @@
             <button id="btn-draw" class="primary">Start drawing</button>
             <button id="btn-clear" class="ghost" disabled>Clear</button>
           </div>
+          <div class="presets">
+            <span>Or load:</span>
+            <button class="chip" data-preset="bandhwari">Bandhwari dump</button>
+            <button class="chip" data-preset="control">Ridge forest (control)</button>
+          </div>
           <dl class="readout" id="area-readout" hidden>
             <div><dt>Area</dt><dd id="area-val"></dd></div>
             <div><dt>Corners</dt><dd id="vertex-val"></dd></div>
@@ -71,8 +80,8 @@
             </label>
             <label>
               <span>After</span>
-              <input type="date" id="after-from" value="2026-03-01" />
-              <input type="date" id="after-to" value="2026-06-15" />
+              <input type="date" id="after-from" value="2025-11-01" />
+              <input type="date" id="after-to" value="2025-12-31" />
             </label>
           </div>
           <button id="btn-search" class="primary" disabled>Find clearest passes</button>
@@ -82,39 +91,65 @@
         <li class="step" data-step="3">
           <div class="step-head">
             <span class="num">3</span>
+            <h2>Measure the change</h2>
+          </div>
+          <p class="help">
+            Both dates are differenced pixel by pixel in your browser. Red is ground
+            that lost vegetation cover &mdash; what fresh debris looks like from orbit.
+            Teal is ground that gained it.
+          </p>
+          <label class="slider">
+            <span>Sensitivity</span>
+            <input id="threshold" type="range" min="5" max="40" value="15" />
+            <output id="threshold-val">0.15</output>
+          </label>
+          <button id="btn-measure" class="primary" disabled>Analyse the outline</button>
+          <p class="status" id="measure-status" hidden></p>
+          <label class="toggle" id="mask-toggle" hidden>
+            <input type="checkbox" id="mask-on" checked />
+            <span>Show change mask</span>
+          </label>
+        </li>
+
+        <li class="step" data-step="4">
+          <div class="step-head">
+            <span class="num">4</span>
             <h2>The evidence</h2>
           </div>
           <div id="packet" hidden>
+            <div class="headline" id="headline"></div>
+
+            <dl class="readout wide">
+              <div><dt>Lost cover</dt><dd id="m-loss"></dd></div>
+              <div><dt>Share of site</dt><dd id="m-pct"></dd></div>
+            </dl>
+            <dl class="readout wide">
+              <div><dt>Gained cover</dt><dd id="m-gain"></dd></div>
+              <div><dt>Loss : gain</dt><dd id="m-px"></dd></div>
+            </dl>
+
             <div class="scenes">
               <article class="scene" id="scene-before">
                 <span class="label">Before</span>
                 <p class="date"></p>
                 <p class="cloud"></p>
+                <p class="ndvi"></p>
                 <code class="id"></code>
               </article>
               <article class="scene" id="scene-after">
                 <span class="label">After</span>
                 <p class="date"></p>
                 <p class="cloud"></p>
+                <p class="ndvi"></p>
                 <code class="id"></code>
               </article>
             </div>
 
-            <div class="pending">
-              <h3>Change mask</h3>
-              <p>
-                Not wired yet. Next: pull the red/NIR bands for both scenes and compute
-                the changed area inside the outline.
-              </p>
-            </div>
-
             <p class="coords" id="packet-coords"></p>
-            <button id="btn-export" class="ghost" disabled>
-              Export evidence packet &mdash; not wired
-            </button>
+            <button id="btn-export" class="primary">Open evidence packet</button>
           </div>
           <p class="help" id="packet-empty">
-            Outline a site and find two passes to build the record.
+            Outline a site, find two passes, then analyse to build the record.
           </p>
         </li>
       </ol>

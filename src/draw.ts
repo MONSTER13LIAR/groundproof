@@ -82,6 +82,13 @@ export class PolygonDraw {
     return this.ring;
   }
 
+  /** Load a prepared outline, e.g. a preset site. */
+  set(ring: Ring) {
+    this.ring = [...ring];
+    this.drawing = false;
+    this.render();
+  }
+
   private onClick(e: MapMouseEvent) {
     if (!this.drawing) return;
     const pt: [number, number] = [e.lngLat.lng, e.lngLat.lat];

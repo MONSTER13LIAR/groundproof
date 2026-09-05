@@ -3,7 +3,13 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import "./style.css";
 import { PolygonDraw } from "./draw";
 import { bbox, formatArea, ringArea, type Ring } from "./geo";
-import { findScene, formatScene, trueColourTiles, type Scene } from "./mpc";
+import { findScene, formatScene, ndviStats, trueColourTiles, type Scene, type Stats } from "./mpc";
+import { maskTiles, registerChangeProtocol } from "./changemask";
+import { classify, measureChange, type ChangeMeasure } from "./measure";
+import { packetHtml } from "./packet";
+import { PRESETS } from "./presets";
+
+registerChangeProtocol();
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
@@ -18,6 +24,7 @@ const mapBefore = new MLMap({
   center: START,
   zoom: 13.2,
   attributionControl: false,
+  canvasContextAttributes: { preserveDrawingBuffer: true },
 });
 const mapAfter = new MLMap({
   container: "map-after",
@@ -25,6 +32,7 @@ const mapAfter = new MLMap({
   center: START,
   zoom: 13.2,
   attributionControl: { compact: true },
+  canvasContextAttributes: { preserveDrawingBuffer: true },
 });
 mapAfter.addControl(new NavigationControl({ showCompass: false }), "top-right");
 
@@ -83,6 +91,11 @@ setStep(1, "active");
 // ---------- drawing ----------
 
 let ring: Ring = [];
+let scenes: { before: Scene; after: Scene } | null = null;
+let stats: { before: Stats; after: Stats } | null = null;
+let measured: ChangeMeasure | null = null;
+
+const threshold = () => Number($<HTMLInputElement>("threshold").value) / 100;
 
 const draw = new PolygonDraw([mapBefore, mapAfter], (next, drawing) => {
   ring = next;
@@ -207,7 +220,12 @@ $("btn-search").addEventListener("click", async () => {
     split = 50;
     applySplit();
 
-    fillPacket(before, after);
+    scenes = { before, after };
+    measured = null;
+    $("packet").hidden = true;
+    $("packet-empty").hidden = false;
+    $<HTMLButtonElement>("btn-measure").disabled = false;
+
     status.textContent = `Two clear passes over tile ${after.mgrs}. Drag the divider to compare.`;
     setStep(2, "done");
     setStep(3, "active");
@@ -221,23 +239,170 @@ $("btn-search").addEventListener("click", async () => {
 
 // ---------- evidence packet ----------
 
-const fillPacket = (before: Scene, after: Scene) => {
-  const fill = (sel: string, scene: Scene) => {
+
+
+applySplit();
+
+// ---------- presets ----------
+
+for (const btn of document.querySelectorAll<HTMLButtonElement>(".chip")) {
+  btn.addEventListener("click", () => {
+    const preset = PRESETS[btn.dataset.preset!];
+    draw.set(preset.ring);
+    const [w, s_, e, n] = bbox(preset.ring);
+    mapAfter.fitBounds([[w, s_], [e, n]], { padding: 140, duration: 700 });
+    $("draw-help").textContent = `Loaded ${preset.label}. Redraw to adjust it.`;
+  });
+}
+
+// ---------- threshold ----------
+
+const thresholdEl = $<HTMLInputElement>("threshold");
+thresholdEl.addEventListener("input", () => {
+  $("threshold-val").textContent = threshold().toFixed(2);
+  if (scenes && !$("mask-toggle").hidden) applyMask();
+});
+
+// ---------- change mask ----------
+
+const MASK = "change-mask";
+
+function applyMask() {
+  if (!scenes) return;
+  for (const map of [mapBefore, mapAfter]) {
+    if (map.getLayer(MASK)) map.removeLayer(MASK);
+    if (map.getSource(MASK)) map.removeSource(MASK);
+    map.addSource(MASK, {
+      type: "raster",
+      tiles: [maskTiles(scenes.before.id, scenes.after.id, threshold(), ring)],
+      tileSize: 256,
+    });
+    map.addLayer({ id: MASK, type: "raster", source: MASK });
+    for (const id of ["draw-fill", "draw-line", "draw-verts"]) {
+      if (map.getLayer(id)) map.moveLayer(id);
+    }
+  }
+}
+
+$("mask-on").addEventListener("change", (e) => {
+  const on = (e.target as HTMLInputElement).checked;
+  for (const map of [mapBefore, mapAfter]) {
+    if (map.getLayer(MASK)) {
+      map.setLayoutProperty(MASK, "visibility", on ? "visible" : "none");
+    }
+  }
+  $("legend").hidden = !on;
+});
+
+// ---------- measure ----------
+
+$("btn-measure").addEventListener("click", async () => {
+  if (!scenes) return;
+  const status = $("measure-status");
+  const btn = $<HTMLButtonElement>("btn-measure");
+
+  status.hidden = false;
+  status.dataset.tone = "";
+  status.textContent = "Differencing both dates in the browser…";
+  btn.disabled = true;
+
+  try {
+    const [m, sb, sa] = await Promise.all([
+      measureChange(ring, scenes.before.id, scenes.after.id, threshold()),
+      ndviStats(scenes.before.id, ring),
+      ndviStats(scenes.after.id, ring),
+    ]);
+    measured = m;
+    stats = { before: sb, after: sa };
+
+    applyMask();
+    $("mask-toggle").hidden = false;
+    $("legend").hidden = false;
+    $("mask-on").setAttribute("checked", "true");
+
+    fillPacket();
+    status.textContent = `${m.sampled.toLocaleString("en-IN")} pixels compared at ${m.pixelM.toFixed(1)} m.`;
+    setStep(3, "done");
+    setStep(4, "active");
+  } catch (err) {
+    status.dataset.tone = "error";
+    status.textContent = `Analysis failed: ${(err as Error).message}`;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ---------- evidence ----------
+
+function fillPacket() {
+  if (!scenes || !stats || !measured) return;
+  const { before, after } = scenes;
+
+  const fill = (sel: string, scene: Scene, st: Stats) => {
     const card = $(sel);
     card.querySelector(".date")!.textContent = formatScene(scene);
     card.querySelector(".cloud")!.textContent = `${scene.cloud.toFixed(1)}% cloud · ${scene.platform}`;
+    card.querySelector(".ndvi")!.textContent = `NDVI ${st.mean.toFixed(3)} mean · ${st.std.toFixed(3)} sd`;
     card.querySelector(".id")!.textContent = scene.id;
   };
-  fill("scene-before", before);
-  fill("scene-after", after);
+  fill("scene-before", before, stats.before);
+  fill("scene-after", after, stats.after);
 
-  const [w, s, e, n] = bbox(ring);
+  const head = $("headline");
+  const { signal, ratio } = classify(measured);
+  head.dataset.tone = signal === "directional" ? "" : "quiet";
+
+  const window_ = `${formatScene(before)} and ${formatScene(after)}`;
+  head.innerHTML =
+    signal === "none"
+      ? `No meaningful loss of cover. <b>${measured.lossPct.toFixed(1)}%</b> of this outline changed between ${window_} — consistent with ground that did not change.`
+      : signal === "noise"
+        ? `<b>${measured.lossPct.toFixed(1)}%</b> lost cover, but gains almost match it. Symmetric change like this is what season and sampling look like, not clearing.`
+        : `<b>${formatArea(measured.lossM2)}</b> of this outline lost vegetation cover between ` +
+          `${window_} — <b>${measured.lossPct.toFixed(1)}%</b> of the site, and losses outrun ` +
+          `gains <b>${ratio === Infinity ? "entirely" : `${ratio.toFixed(1)}:1`}</b>.`;
+
+  $("m-loss").textContent = formatArea(measured.lossM2);
+  $("m-pct").textContent = `${measured.lossPct.toFixed(1)}%`;
+  $("m-gain").textContent = formatArea(measured.gainM2);
+  $("m-px").textContent = ratio === Infinity ? "loss only" : `${ratio.toFixed(1)} : 1`;
+
+  const [w, s_, e, n] = bbox(ring);
   $("packet-coords").innerHTML =
     `Outline ${ring.length} corners · ${formatArea(ringArea(ring))}<br />` +
-    `bbox ${w.toFixed(5)}, ${s.toFixed(5)} → ${e.toFixed(5)}, ${n.toFixed(5)}`;
+    `bbox ${w.toFixed(5)}, ${s_.toFixed(5)} → ${e.toFixed(5)}, ${n.toFixed(5)}`;
 
   $("packet").hidden = false;
   $("packet-empty").hidden = true;
-};
+}
+
+// ---------- export ----------
+
+$("btn-export").addEventListener("click", () => {
+  if (!scenes || !stats || !measured) return;
+
+  mapBefore.redraw();
+  mapAfter.redraw();
+
+  const html = packetHtml({
+    ring,
+    areaM2: ringArea(ring),
+    before: scenes.before,
+    after: scenes.after,
+    beforeStats: stats.before,
+    afterStats: stats.after,
+    measure: measured,
+    threshold: threshold(),
+    images: {
+      before: mapBefore.getCanvas().toDataURL("image/png"),
+      after: mapAfter.getCanvas().toDataURL("image/png"),
+    },
+  });
+
+  const w = window.open("", "_blank");
+  if (!w) return;
+  w.document.write(html);
+  w.document.close();
+});
 
 applySplit();

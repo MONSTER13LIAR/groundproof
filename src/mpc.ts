@@ -5,6 +5,7 @@
 
 const STAC = "https://planetarycomputer.microsoft.com/api/stac/v1/search";
 const TILER = "https://planetarycomputer.microsoft.com/api/data/v1/item/tiles/WebMercatorQuad";
+const STATS = "https://planetarycomputer.microsoft.com/api/data/v1/item/statistics";
 
 const COLLECTION = "sentinel-2-l2a";
 
@@ -77,4 +78,60 @@ export function trueColourTiles(itemId: string): string {
 export function formatScene(s: Scene): string {
   const d = new Date(s.datetime);
   return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+}
+
+const NDVI = "(B08-B04)/(B08+B04)";
+
+/** Single NDVI tile, rescaled to an 8-bit grey ramp so it can be differenced. */
+export function ndviTiles(itemId: string, z: string, x: string, y: string): string {
+  const q = new URLSearchParams({
+    collection: COLLECTION,
+    item: itemId,
+    expression: NDVI,
+    asset_as_band: "True",
+    rescale: "-1,1",
+    colormap_name: "gray",
+    format: "png",
+  });
+  return `${TILER}/${z}/${x}/${y}@1x?${q}`;
+}
+
+export interface Stats {
+  mean: number;
+  median: number;
+  std: number;
+  min: number;
+  max: number;
+  count: number;
+}
+
+/** NDVI statistics for one scene inside the drawn outline. */
+export async function ndviStats(itemId: string, ring: [number, number][]): Promise<Stats> {
+  const q = new URLSearchParams({
+    collection: COLLECTION,
+    item: itemId,
+    expression: NDVI,
+    asset_as_band: "True",
+  });
+  const res = await fetch(`${STATS}?${q}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      type: "Feature",
+      properties: {},
+      geometry: { type: "Polygon", coordinates: [[...ring, ring[0]]] },
+    }),
+  });
+  if (!res.ok) throw new Error(`statistics failed (${res.status})`);
+
+  const json = await res.json();
+  const band = Object.values(json.properties.statistics)[0] as any;
+  return {
+    mean: band.mean,
+    median: band.median,
+    std: band.std,
+    min: band.min,
+    max: band.max,
+    count: band.count,
+  };
 }

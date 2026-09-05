@@ -317,3 +317,93 @@ footer { padding: 18px 22px 22px; }
 @media (max-width: 720px) {
   #panel { inset: auto 8px 8px; top: auto; width: auto; max-height: 62dvh; }
 }
+
+/* ---------- presets ---------- */
+
+.presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.presets > span { font-size: 11.5px; color: var(--faint); }
+
+.chip {
+  padding: 5px 10px;
+  font-size: 11.5px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--muted);
+}
+
+.chip:hover { color: var(--ink); border-color: var(--faint); }
+
+/* ---------- controls ---------- */
+
+.slider { display: grid; grid-template-columns: 66px 1fr 34px; align-items: center; gap: 9px; margin-top: 14px; }
+.slider span { font-size: 12px; font-weight: 500; color: var(--muted); }
+.slider output { font: 500 12px "JetBrains Mono", ui-monospace, monospace; text-align: right; }
+
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+
+.toggle { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 12.5px; color: var(--muted); }
+.toggle input { accent-color: var(--ink); }
+
+/* ---------- evidence ---------- */
+
+.headline {
+  padding: 13px;
+  border-radius: var(--r);
+  background: var(--accent-soft);
+  border: 1px solid #f2d6cb;
+  font-size: 13.5px;
+  line-height: 1.5;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.headline[data-tone="quiet"] {
+  background: var(--paper);
+  border-color: var(--line);
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.headline b { font-weight: 600; }
+
+.readout.wide { justify-content: space-between; gap: 14px; }
+.readout.wide > div { flex: 1; }
+
+.scene .ndvi {
+  margin: 6px 0 0;
+  font: 400 11.5px "JetBrains Mono", ui-monospace, monospace;
+  color: var(--muted);
+}
+
+/* ---------- legend ---------- */
+
+#legend {
+  position: absolute;
+  top: 16px;
+  right: 56px;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  font-size: 11px;
+  color: var(--muted);
+  backdrop-filter: blur(6px);
+}
+
+#legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+#legend i.loss { background: #c6431f; }
+#legend i.gain { background: #2e7a8a; }
+#legend span + i { margin-left: 6px; }
