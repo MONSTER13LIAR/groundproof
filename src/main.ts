@@ -1,5 +1,6 @@
-import { Map as MLMap, NavigationControl } from "maplibre-gl";
+import { Map as MLMap, NavigationControl, setWorkerUrl } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url";
 import "./style.css";
 import { PolygonDraw } from "./draw";
 import { bbox, formatArea, ringArea, type Ring } from "./geo";
@@ -9,6 +10,11 @@ import { classify, measureChange, type ChangeMeasure } from "./measure";
 import { packetHtml } from "./packet";
 import { PRESETS } from "./presets";
 import { geocode } from "./geocode";
+
+// maplibre resolves its worker filename by string concatenation, which no
+// bundler can follow, so the file is never emitted and vector tiles die
+// silently — the basemap renders blank. Point it at the emitted asset.
+setWorkerUrl(workerUrl);
 
 registerChangeProtocol();
 
@@ -127,20 +133,43 @@ $("btn-draw").addEventListener("click", () => {
     "Click to place corners. Press Enter or click the first corner again to close.";
 });
 
+/** Drop every layer this run added, so nothing outlives the outline it describes. */
+const dropLayer = (map: MLMap, id: string) => {
+  if (map.getLayer(id)) map.removeLayer(id);
+  if (map.getSource(id)) map.removeSource(id);
+};
+
 $("btn-clear").addEventListener("click", () => {
   draw.clear();
   ring = [];
+  scenes = null;
+  stats = null;
+  measured = null;
+
+  // A stale red mask floating over no outline reads as a finding. Take it down.
+  dropLayer(mapAfter, MASK);
+  dropLayer(mapBefore, "img-before");
+  dropLayer(mapAfter, "img-after");
+
   $("area-readout").hidden = true;
   $("packet").hidden = true;
   $("packet-empty").hidden = false;
   $("swipe").hidden = true;
   $("stamp-before").hidden = true;
   $("stamp-after").hidden = true;
+  $("legend").hidden = true;
+  $("mask-toggle").hidden = true;
+  $("search-status").hidden = true;
+  $("measure-status").hidden = true;
+  $("draw-help").textContent =
+    "Click to place corners on the map. Press Enter or click the first corner again to close the shape.";
   $<HTMLButtonElement>("btn-search").disabled = true;
+  $<HTMLButtonElement>("btn-measure").disabled = true;
   $<HTMLButtonElement>("btn-clear").disabled = true;
   setStep(1, "active");
   setStep(2, null);
   setStep(3, null);
+  setStep(4, null);
 });
 
 // ---------- imagery ----------
@@ -244,14 +273,36 @@ $("btn-search").addEventListener("click", async () => {
 
 applySplit();
 
+// ---------- framing ----------
+
+/**
+ * The panel covers the left of the screen on desktop and the bottom on mobile.
+ * A symmetric padding therefore centres the site under the panel, and on a
+ * narrow screen a fixed 120px inset overshoots the zoom entirely.
+ */
+const fitPadding = () =>
+  window.innerWidth <= 720
+    ? { top: 56, bottom: Math.round(window.innerHeight * 0.62) + 24, left: 24, right: 24 }
+    : { top: 60, bottom: 60, left: 416, right: 60 };
+
+const fitBox = (box: [number, number, number, number], maxZoom?: number) => {
+  const [w, s_, e, n] = box;
+  // maplibre copies an explicit `maxZoom: undefined` over its own default and
+  // then takes Math.min against it, giving NaN and a camera that never moves.
+  mapAfter.fitBounds([[w, s_], [e, n]], {
+    padding: fitPadding(),
+    duration: 700,
+    ...(maxZoom === undefined ? {} : { maxZoom }),
+  });
+};
+
 // ---------- presets ----------
 
 for (const btn of document.querySelectorAll<HTMLButtonElement>(".chip")) {
   btn.addEventListener("click", () => {
     const preset = PRESETS[btn.dataset.preset!];
     draw.set(preset.ring);
-    const [w, s_, e, n] = bbox(preset.ring);
-    mapAfter.fitBounds([[w, s_], [e, n]], { padding: 120, duration: 700 });
+    fitBox(bbox(preset.ring));
     $("draw-help").textContent = `Loaded ${preset.label}. Redraw to adjust it.`;
   });
 }
@@ -321,7 +372,7 @@ $("btn-measure").addEventListener("click", async () => {
     applyMask();
     $("mask-toggle").hidden = false;
     $("legend").hidden = false;
-    $("mask-on").setAttribute("checked", "true");
+    $<HTMLInputElement>("mask-on").checked = true;
 
     fillPacket();
     status.textContent = `${m.sampled.toLocaleString("en-IN")} pixels compared at ${m.pixelM.toFixed(1)} m.`;
@@ -434,8 +485,7 @@ $("find").addEventListener("submit", async (e) => {
       li.textContent = place.label;
       li.addEventListener("click", () => {
         if (place.bbox) {
-          const [w, s_, e_, n] = place.bbox;
-          mapAfter.fitBounds([[w, s_], [e_, n]], { padding: 90, maxZoom: 15.5, duration: 800 });
+          fitBox(place.bbox, 15.5);
         } else {
           mapAfter.flyTo({ center: [place.lon, place.lat], zoom: 14.5 });
         }
