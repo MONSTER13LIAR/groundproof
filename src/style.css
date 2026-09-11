@@ -306,6 +306,50 @@ input[type="date"]:focus-visible { outline: 2px solid var(--ink); outline-offset
   color: var(--faint);
 }
 
+/* ---------- why-this-matters context ---------- */
+
+.context {
+  margin: 14px 0 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--card);
+}
+
+.context > summary {
+  cursor: pointer;
+  padding: 9px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  list-style: none;
+  user-select: none;
+}
+
+.context > summary::-webkit-details-marker { display: none; }
+
+.context > summary::after {
+  content: "+";
+  float: right;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+.context[open] > summary::after { content: "\2212"; }
+.context[open] > summary { border-bottom: 1px solid var(--line); }
+
+.context p {
+  margin: 0;
+  padding: 10px 12px 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.context p:last-child { padding-bottom: 11px; }
+.context strong { color: var(--ink); font-weight: 600; }
+.context .src { font-size: 10.5px; color: var(--faint); }
+.context a { color: var(--accent); }
+
 /* ---------- footer ---------- */
 
 footer { padding: 18px 22px 22px; }

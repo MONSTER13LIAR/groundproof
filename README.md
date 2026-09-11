@@ -27,6 +27,22 @@ Groundproof replaces "I saw trucks" with "between these two dates, this much of 
 protected land lost vegetation cover, per Sentinel-2 scene `S2A_…`, acquired
 `2025-11-26T05:32:51Z`" — a claim with an independent timestamp behind it.
 
+## Why the Aravallis matter
+
+For readers outside India: the Aravalli range is a living barrier holding back the
+Thar Desert. The Government of India launched the **Aravalli Green Wall Project** to
+green a 5 km buffer along it across Haryana, Rajasthan, Gujarat and Delhi — a
+landscape spanning **over 6 million hectares** — with the stated objective of
+preventing the *"eastward expansion of Thar Desert"* and the soil erosion,
+desertification and dust storms that follow.
+
+Delhi and Gurugram — some 30 million people — sit directly downwind and downslope of
+it. Every hectare buried under construction debris is a hectare of that barrier taken
+out. That is what this tool measures.
+
+> Source: Ministry of Environment, Forest and Climate Change,
+> [Press Information Bureau, 25 March 2023](https://www.pib.gov.in/PressReleaseIframePage.aspx?PRID=1910745)
+
 ## What it does
 
 1. **Find and outline the site.** Search for a place, then click corners on the map;
