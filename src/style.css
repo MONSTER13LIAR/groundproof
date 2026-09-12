@@ -358,6 +358,40 @@ button:disabled { opacity: 0.42; cursor: not-allowed; }
 .more > summary::before { content: "+ "; color: var(--faint); }
 .more[open] > summary::before { content: "\2212  "; }
 
+/* "Somewhere else" reads as one more card, not a footnote under the cards. */
+.elsewhere { margin-top: 8px; }
+
+.elsewhere > summary {
+  display: grid;
+  gap: 3px;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink);
+  font-weight: 400;
+  transition: border-color 0.14s ease, background 0.14s ease;
+}
+
+.elsewhere > summary::before,
+.elsewhere[open] > summary::before { content: none; }
+.elsewhere > summary:hover { border-color: var(--ink); background: var(--paper); }
+.elsewhere > summary .site-label { color: var(--muted); }
+.elsewhere[open] > summary { border-color: var(--ink); border-radius: 12px 12px 0 0; }
+
+.elsewhere[open] > summary + * { margin-top: 0; }
+
+.elsewhere #find,
+.elsewhere #results,
+.elsewhere #btn-draw { margin-left: 0; }
+
+.elsewhere-body {
+  padding: 12px 15px 15px;
+  border: 1px solid var(--ink);
+  border-top: 0;
+  border-radius: 0 0 12px 12px;
+}
+
 /* ---------- drawing ---------- */
 
 .count {
@@ -588,7 +622,7 @@ footer { padding: 16px 26px 22px; border-top: 1px solid var(--line); }
 
 /* ---------- place search ---------- */
 
-#find { display: flex; gap: 7px; margin: 6px 0 4px; }
+#find { display: flex; gap: 7px; margin: 0 0 4px; }
 
 #find input {
   flex: 1;

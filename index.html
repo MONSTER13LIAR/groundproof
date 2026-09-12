@@ -91,14 +91,20 @@
         <h2>Where do you want to look?</h2>
         <p class="help">Each area is a real, reported site. Tap one and the satellite does the rest.</p>
         <div id="sites"></div>
-        <details class="more">
-          <summary>Somewhere else</summary>
-          <form id="find" autocomplete="off">
-            <input id="q" type="search" placeholder="Search a place" aria-label="Find a place" />
-            <button type="submit" class="ghost">Go</button>
-          </form>
-          <ul id="results" hidden></ul>
-          <button id="btn-draw" class="ghost wide">Outline an area by hand</button>
+        <details class="more elsewhere">
+          <summary>
+            <span class="site-label">Somewhere else</span>
+            <span class="site-place">Search or outline any place on Earth</span>
+            <span class="site-blurb">The method is not tied to these hills. Type a place, or draw your own outline.</span>
+          </summary>
+          <div class="elsewhere-body">
+            <form id="find" autocomplete="off">
+              <input id="q" type="search" placeholder="Search a place" aria-label="Find a place" />
+              <button type="submit" class="ghost">Go</button>
+            </form>
+            <ul id="results" hidden></ul>
+            <button id="btn-draw" class="ghost wide">Outline an area by hand</button>
+          </div>
         </details>
       </section>
 
