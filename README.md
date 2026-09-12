@@ -1,9 +1,9 @@
-# Groundproof
+# Aravalli Watch
 
-Turn illegal dumping into dated satellite evidence. Draw a site, pick two dates,
-and get a measured, citable record of what the ground lost.
+**Save the Aravallis.** Watch India's oldest hills disappear from orbit, year by
+year, and turn what you see into a dated, citable satellite record.
 
-**[Open Groundproof &rarr;](https://monster13liar.github.io/groundproof/)**
+**[Open Aravalli Watch &rarr;](https://monster13liar.github.io/aravalli-watch/)**
 
 ---
 
@@ -23,7 +23,7 @@ The gap is not awareness. It is evidence. A phone video is one resident's word a
 is dismissed as such. Gurugram generates roughly 300 tonnes of debris a day; 4,643
 tonnes were cleared in the whole of 2019.
 
-Groundproof replaces "I saw trucks" with "between these two dates, this much of this
+Aravalli Watch replaces "I saw trucks" with "between these two dates, this much of this
 protected land lost vegetation cover, per Sentinel-2 scene `S2A_…`, acquired
 `2025-11-26T05:32:51Z`" — a claim with an independent timestamp behind it.
 
@@ -45,23 +45,47 @@ out. That is what this tool measures.
 
 ## What it does
 
-1. **Find and outline the site.** Search for a place, then click corners on the map;
-   area is computed geodesically.
-2. **Pick two windows.** It searches the Sentinel-2 archive and takes the
-   least-cloudy pass in each, pinning both to the same MGRS tile so the two images
-   cover identical ground.
-3. **Measure.** NDVI is computed for both dates and differenced pixel by pixel
+Three taps, no form.
+
+1. **Where.** Four pre-marked areas — three reported sites and one untouched
+   control — each a named place with a published record behind it. Or search
+   anywhere and outline it by hand.
+2. **When.** A timeline of dry-season years, 2016 to today. Pick *then* and *now*
+   and it searches the Sentinel-2 archive for the least-cloudy pass in each,
+   pinning both to the same MGRS tile so the two images cover identical ground.
+   Every year is a November–December window, so the comparison is like for like.
+3. **Verdict.** NDVI is computed for both dates and differenced pixel by pixel
    inside the outline, in the browser. Ground that lost cover is reported in
-   hectares and painted red on the after image.
-4. **Export.** A printable evidence packet carrying the measurement, both scene
-   ids, both acquisition timestamps, the method, and the limits.
+   hectares and painted red on the after image, under a swipe divider.
+   A printable evidence packet carries the measurement, both scene ids, both
+   acquisition timestamps, the method, and the limits.
+
+### The pre-marked areas
+
+| Area | Place | Record |
+|---|---|---|
+| 1 | Bandhwari landfill, Gurugram–Faridabad road | [The Tribune](https://www.tribuneindia.com/news/haryana/debris-mounds-in-aravallis-pose-flash-flood-threat-in-gurugram-faridabad-401914) — residents on nightly debris dumping |
+| 2 | Anangpur farmhouse belt, Faridabad | [ThePrint, 6 Aug 2025](https://theprint.in/ground-reports/faridabad-farmhouses-vs-aravallis-isnt-over-its-a-war-that-has-just-begun/2714813/) — 6,793 unauthorised structures across 786 acres; demolitions from June 2025 |
+| 3 | Ankhir, Faridabad | Same survey; one of the four villages named |
+| Control | Ridge forest away from any road | Method check — should read as no loss |
+
+Areas 2 and 3 are roughly 1 km² around the village's gazetteer point, not a
+surveyed boundary. Every outline was checked against the imagery before it went in.
+
+### The numbers on the opening screen
+
+| Figure | Source |
+|---|---|
+| 31 of 128 hills in Rajasthan's Aravallis have vanished | Supreme Court of India, 23 Oct 2018, via [The Tribune](https://www.tribuneindia.com/news/archive/nation/-humans-flying-away-with-hills-like-hanuman-sc-shocked-at-illegal-mining-in-rajasthan-672512) |
+| 10,000+ acres of Gurugram's Natural Conservation Zone lost in eight years | Report to the National Green Tribunal, via [Mongabay, Feb 2022](https://india.mongabay.com/2022/02/the-ignorance-of-the-haryana-government-has-cost-the-aravallis-dearly/) |
+| 1,200+ acres of Faridabad's Aravalli green cover lost to encroachment | District administration, via [The Tribune, Feb 2023](https://www.tribuneindia.com/news/haryana/over-1-200-acre-green-cover-in-aravallis-lost-to-encroachments-476687) |
 
 ## Does it actually work?
 
 The method was tested against a control — a stretch of Aravalli ridge forest that
 should read as unchanged over the same period, through the same seasonal shift.
 
-| Site | Lost cover | Share of site | Gained cover | Loss : gain |
+| Area | Lost cover | Share of area | Gained cover | Loss : gain |
 |---|---|---|---|---|
 | Bandhwari waste site | 14.01 ha | **13.3%** | 1,271 m² | **110 : 1** |
 | Ridge forest (control) | 0.52 ha | **0.4%** | 4.89 ha | **0.1 : 1** |
@@ -80,8 +104,8 @@ like. Without that test a red map is just a pattern.
 
 - **Not who did it.** This records that ground changed, not who changed it.
 - **Not small dumping.** Sentinel-2 resolves 10 m. A single truckload will not appear.
-- **Not season-proof.** Harvest, die-back and drought also reduce NDVI. Compare
-  like-for-like months; the default windows do.
+- **Not season-proof.** Harvest, die-back and drought also reduce NDVI. Every
+  year on the timeline is the same November–December window for that reason.
 - **Not a substitute for a site visit.** It is the document you bring to one.
 
 ## Data

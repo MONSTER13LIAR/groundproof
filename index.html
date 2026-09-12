@@ -3,10 +3,10 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Groundproof</title>
+    <title>Aravalli Watch</title>
     <meta
       name="description"
-      content="Turn illegal dumping into dated satellite evidence. Draw the site, pick two dates, get a citable record."
+      content="Save the Aravallis. Watch protected hills disappear from orbit, year by year, and turn what you see into dated satellite evidence."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -32,25 +32,51 @@
 
     <aside id="panel">
       <header class="brand">
-        <h1>Groundproof</h1>
-        <p class="tagline">
-          Complaints get dismissed. A satellite&rsquo;s timestamp does not.
+        <h1>Aravalli Watch</h1>
+        <p class="tagline">Save the Aravallis.</p>
+      </header>
+
+      <nav class="crumbs" id="crumbs" hidden>
+        <span data-screen="where">Where</span>
+        <span data-screen="when">When</span>
+        <span data-screen="verdict">Verdict</span>
+      </nav>
+
+      <!-- 0 · the brutal reality -->
+      <section class="screen" data-screen="intro">
+        <p class="kicker">India&rsquo;s oldest mountain range is being carried away.</p>
+        <div class="fact hero">
+          <span class="n">31<small>of 128</small></span>
+          <span class="t">hills in Rajasthan&rsquo;s Aravallis have <b>vanished</b>. &ldquo;Humans seem to be flying away with hills just like Hanuman,&rdquo; the Supreme Court said.</span>
+          <a class="src" href="https://www.tribuneindia.com/news/archive/nation/-humans-flying-away-with-hills-like-hanuman-sc-shocked-at-illegal-mining-in-rajasthan-672512" target="_blank" rel="noopener">Supreme Court of India, 23 Oct 2018 &middot; The Tribune</a>
+        </div>
+        <div class="fact">
+          <span class="n">10,000<small>acres</small></span>
+          <span class="t">of Gurugram&rsquo;s greenest protected zone lost in eight years.</span>
+          <a class="src" href="https://india.mongabay.com/2022/02/the-ignorance-of-the-haryana-government-has-cost-the-aravallis-dearly/" target="_blank" rel="noopener">Report to the National Green Tribunal &middot; Mongabay, Feb 2022</a>
+        </div>
+        <div class="fact">
+          <span class="n">1,200<small>acres</small></span>
+          <span class="t">of Faridabad&rsquo;s Aravalli green cover lost to encroachment.</span>
+          <a class="src" href="https://www.tribuneindia.com/news/haryana/over-1-200-acre-green-cover-in-aravallis-lost-to-encroachments-476687" target="_blank" rel="noopener">District administration &middot; The Tribune, Feb 2023</a>
+        </div>
+        <p class="lede">
+          Residents film the trucks. Complaints get dismissed. A satellite&rsquo;s timestamp
+          does not. Pick a place, pick two years, and watch what the ground lost.
         </p>
+        <button id="btn-start" class="primary big">Watch it from orbit &rarr;</button>
         <details class="context">
-          <summary>Why the Aravallis</summary>
+          <summary>Why the Aravallis matter</summary>
           <p>
-            India&rsquo;s Aravalli range is a living barrier holding back the Thar
-            Desert. The Government of India launched the Aravalli Green Wall Project
-            to green a 5&nbsp;km buffer along it across Haryana, Rajasthan, Gujarat
-            and Delhi &mdash; a landscape spanning
-            <strong>over 6 million hectares</strong> &mdash; explicitly to
-            &ldquo;prevent eastward expansion of Thar Desert&rdquo; and the soil
-            erosion, desertification and dust storms that follow.
+            The range is a living barrier holding back the Thar Desert. The Government of
+            India&rsquo;s Aravalli Green Wall Project covers a landscape of
+            <strong>over 6 million hectares</strong> across Haryana, Rajasthan, Gujarat
+            and Delhi, explicitly to &ldquo;prevent eastward expansion of Thar
+            Desert&rdquo; and the dust storms and desertification that follow.
           </p>
           <p>
-            Delhi and Gurugram sit directly downwind and downslope of it. Every
-            hectare buried under construction debris is a hectare of that barrier
-            taken out &mdash; which is what this tool measures.
+            Delhi and Gurugram sit directly downwind of it. Every hectare buried under
+            debris is a hectare of that barrier taken out. That is what this tool measures.
           </p>
           <p class="src">
             Source: Ministry of Environment, Forest and Climate Change,
@@ -58,128 +84,98 @@
                target="_blank" rel="noopener">Press Information Bureau, 25 Mar 2023</a>
           </p>
         </details>
-      </header>
+      </section>
 
-      <ol class="steps">
-        <li class="step" data-step="1">
-          <div class="step-head">
-            <span class="num">1</span>
-            <h2>Outline the site</h2>
-          </div>
+      <!-- 1 · where -->
+      <section class="screen" data-screen="where" hidden>
+        <h2>Where do you want to look?</h2>
+        <p class="help">Each area is a real, reported site. Tap one and the satellite does the rest.</p>
+        <div id="sites"></div>
+        <details class="more">
+          <summary>Somewhere else</summary>
           <form id="find" autocomplete="off">
-            <input id="q" type="search" placeholder="Find a place to inspect" aria-label="Find a place" />
+            <input id="q" type="search" placeholder="Search a place" aria-label="Find a place" />
             <button type="submit" class="ghost">Go</button>
           </form>
           <ul id="results" hidden></ul>
-          <p class="help" id="draw-help">
-            Click to place corners on the map. Press <kbd>Enter</kbd> or click the first
-            corner again to close the shape.
-          </p>
-          <div class="row">
-            <button id="btn-draw" class="primary">Start drawing</button>
-            <button id="btn-clear" class="ghost" disabled>Clear</button>
-          </div>
-          <div class="presets">
-            <span>Or load:</span>
-            <button class="chip" data-preset="bandhwari">Bandhwari waste site</button>
-            <button class="chip" data-preset="control">Ridge forest (control)</button>
-          </div>
-          <dl class="readout" id="area-readout" hidden>
-            <div><dt>Area</dt><dd id="area-val"></dd></div>
-            <div><dt>Corners</dt><dd id="vertex-val"></dd></div>
-          </dl>
-        </li>
+          <button id="btn-draw" class="ghost wide">Outline an area by hand</button>
+        </details>
+      </section>
 
-        <li class="step" data-step="2">
-          <div class="step-head">
-            <span class="num">2</span>
-            <h2>Pick two windows</h2>
-          </div>
-          <p class="help">
-            A window, not a date &mdash; a satellite only passes every few days, and
-            monsoon cloud hides most of them.
-          </p>
-          <div class="windows">
-            <label>
-              <span>Before</span>
-              <input type="date" id="before-from" value="2019-11-01" />
-              <input type="date" id="before-to" value="2019-12-31" />
-            </label>
-            <label>
-              <span>After</span>
-              <input type="date" id="after-from" value="2025-11-01" />
-              <input type="date" id="after-to" value="2025-12-31" />
-            </label>
-          </div>
-          <button id="btn-search" class="primary" disabled>Find clearest passes</button>
-          <p class="status" id="search-status" hidden></p>
-        </li>
+      <!-- 1b · drawing -->
+      <section class="screen" data-screen="draw" hidden>
+        <h2>Outline the area</h2>
+        <p class="help">Click corners on the map. Three or more make a shape.</p>
+        <p class="count" id="draw-count">Click the map to place the first corner</p>
+        <div class="row">
+          <button id="btn-done" class="primary" disabled>Done</button>
+          <button id="btn-cancel" class="ghost">Cancel</button>
+        </div>
+        <p class="hint"><kbd>Enter</kbd> also finishes &middot; <kbd>Esc</kbd> cancels</p>
+      </section>
 
-        <li class="step" data-step="3">
-          <div class="step-head">
-            <span class="num">3</span>
-            <h2>Measure the change</h2>
+      <!-- 2 · when -->
+      <section class="screen" data-screen="when" hidden>
+        <h2>How far back?</h2>
+        <p class="help">
+          Looking at <b id="when-place"></b>. Every year is a clear dry-season pass, so
+          the comparison is like for like.
+        </p>
+        <div class="timeline">
+          <div class="tl-row"><span class="tl-label">Then</span><div class="chips" id="row-then"></div></div>
+          <div class="tl-row"><span class="tl-label">Now</span><div class="chips" id="row-now"></div></div>
+        </div>
+        <p class="status" id="run-status" hidden></p>
+        <button id="btn-back-where" class="ghost wide">Pick a different place</button>
+      </section>
+
+      <!-- 3 · verdict -->
+      <section class="screen" data-screen="verdict" hidden>
+        <div class="headline" id="headline"></div>
+        <p class="help">Drag the divider on the map. Red on the right is ground that lost cover.</p>
+
+        <dl class="readout wide">
+          <div><dt>Lost cover</dt><dd id="m-loss"></dd></div>
+          <div><dt>Share of area</dt><dd id="m-pct"></dd></div>
+          <div><dt>Loss : gain</dt><dd id="m-px"></dd></div>
+        </dl>
+
+        <button id="btn-export" class="primary wide">Open the evidence packet</button>
+        <div class="row">
+          <button id="btn-again-year" class="ghost">Another year</button>
+          <button id="btn-again-place" class="ghost">Another place</button>
+        </div>
+
+        <details class="more">
+          <summary>Under the hood</summary>
+          <div class="scenes">
+            <article class="scene" id="scene-before">
+              <span class="label">Before</span>
+              <p class="date"></p>
+              <p class="cloud"></p>
+              <p class="ndvi"></p>
+              <code class="id"></code>
+            </article>
+            <article class="scene" id="scene-after">
+              <span class="label">After</span>
+              <p class="date"></p>
+              <p class="cloud"></p>
+              <p class="ndvi"></p>
+              <code class="id"></code>
+            </article>
           </div>
-          <p class="help">
-            Both dates are differenced pixel by pixel in your browser, inside the
-            outline only. The mask sits on the after side: red is ground that lost
-            vegetation cover, teal is ground that gained it.
-          </p>
           <label class="slider">
             <span>Sensitivity</span>
             <input id="threshold" type="range" min="5" max="40" value="15" />
             <output id="threshold-val">0.15</output>
           </label>
-          <button id="btn-measure" class="primary" disabled>Analyse the outline</button>
-          <p class="status" id="measure-status" hidden></p>
-          <label class="toggle" id="mask-toggle" hidden>
+          <label class="toggle">
             <input type="checkbox" id="mask-on" checked />
             <span>Show change mask</span>
           </label>
-        </li>
-
-        <li class="step" data-step="4">
-          <div class="step-head">
-            <span class="num">4</span>
-            <h2>The evidence</h2>
-          </div>
-          <div id="packet" hidden>
-            <div class="headline" id="headline"></div>
-
-            <dl class="readout wide">
-              <div><dt>Lost cover</dt><dd id="m-loss"></dd></div>
-              <div><dt>Share of site</dt><dd id="m-pct"></dd></div>
-            </dl>
-            <dl class="readout wide">
-              <div><dt>Gained cover</dt><dd id="m-gain"></dd></div>
-              <div><dt>Loss : gain</dt><dd id="m-px"></dd></div>
-            </dl>
-
-            <div class="scenes">
-              <article class="scene" id="scene-before">
-                <span class="label">Before</span>
-                <p class="date"></p>
-                <p class="cloud"></p>
-                <p class="ndvi"></p>
-                <code class="id"></code>
-              </article>
-              <article class="scene" id="scene-after">
-                <span class="label">After</span>
-                <p class="date"></p>
-                <p class="cloud"></p>
-                <p class="ndvi"></p>
-                <code class="id"></code>
-              </article>
-            </div>
-
-            <p class="coords" id="packet-coords"></p>
-            <button id="btn-export" class="primary">Open evidence packet</button>
-          </div>
-          <p class="help" id="packet-empty">
-            Outline a site, find two passes, then analyse to build the record.
-          </p>
-        </li>
-      </ol>
+          <p class="coords" id="packet-coords"></p>
+        </details>
+      </section>
 
       <footer>
         <p class="caveat">

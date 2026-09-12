@@ -8,7 +8,7 @@ import { findScene, formatScene, ndviStats, trueColourTiles, type Scene, type St
 import { maskTiles, registerChangeProtocol } from "./changemask";
 import { classify, measureChange, type ChangeMeasure } from "./measure";
 import { packetHtml } from "./packet";
-import { PRESETS } from "./presets";
+import { SITES, YEARS, type Site } from "./presets";
 import { geocode } from "./geocode";
 
 // maplibre resolves its worker filename by string concatenation, which no
@@ -22,14 +22,15 @@ const $ = <T extends HTMLElement = HTMLElement>(id: string) =>
   document.getElementById(id) as T;
 
 const STYLE = "https://tiles.openfreemap.org/styles/positron";
-/** Bandhwari, on the Gurugram–Faridabad road through the Aravallis. */
-const START: [number, number] = [77.093, 28.404];
+/** The Faridabad–Gurugram stretch of the Aravallis, where every pre-marked area sits. */
+const START: [number, number] = [77.21, 28.415];
+const PANEL_W = 460;
 
 const mapBefore = new MLMap({
   container: "map-before",
   style: STYLE,
   center: START,
-  zoom: 13.2,
+  zoom: 11.6,
   attributionControl: false,
   canvasContextAttributes: { preserveDrawingBuffer: true },
 });
@@ -37,7 +38,7 @@ const mapAfter = new MLMap({
   container: "map-after",
   style: STYLE,
   center: START,
-  zoom: 13.2,
+  zoom: 11.6,
   attributionControl: { compact: true },
   canvasContextAttributes: { preserveDrawingBuffer: true },
 });
@@ -84,100 +85,213 @@ const startDrag = (ev: PointerEvent) => {
   window.addEventListener("pointerup", stop);
 };
 $("swipe-handle").addEventListener("pointerdown", startDrag);
+applySplit();
 
-// ---------- step state ----------
+// ---------- screens ----------
 
-const setStep = (n: number, state: "active" | "done" | null) => {
-  const el = document.querySelector<HTMLElement>(`.step[data-step="${n}"]`);
-  if (!el) return;
-  el.dataset.active = state === "active" ? "true" : "false";
-  el.dataset.done = state === "done" ? "true" : "false";
+type Screen = "intro" | "where" | "draw" | "when" | "verdict";
+let screen: Screen = "intro";
+
+/** One screen at a time. The crumbs track where the visitor is in the story. */
+function show(next: Screen) {
+  screen = next;
+  for (const el of document.querySelectorAll<HTMLElement>(".screen")) {
+    const on = el.dataset.screen === next;
+    if (on) {
+      el.hidden = false;
+      el.classList.remove("rise");
+      void el.offsetWidth; // restart the animation
+      el.classList.add("rise");
+    } else {
+      el.hidden = true;
+    }
+  }
+  const order: Screen[] = ["where", "when", "verdict"];
+  const idx = order.indexOf(next === "draw" ? "where" : next);
+  for (const c of document.querySelectorAll<HTMLElement>(".crumbs span")) {
+    const i = order.indexOf(c.dataset.screen as Screen);
+    c.dataset.state = i < idx ? "done" : i === idx ? "active" : "";
+  }
+  $("crumbs").hidden = next === "intro";
+  $("panel").scrollTo({ top: 0, behavior: "smooth" });
+}
+
+$("btn-start").addEventListener("click", () => show("where"));
+
+// ---------- framing ----------
+
+/**
+ * The panel covers the left of the screen on desktop and the bottom on mobile.
+ * A symmetric padding therefore centres the site under the panel, and on a
+ * narrow screen a fixed inset overshoots the zoom entirely.
+ */
+const fitPadding = () =>
+  window.innerWidth <= 720
+    ? { top: 56, bottom: Math.round(window.innerHeight * 0.64) + 24, left: 24, right: 24 }
+    : { top: 60, bottom: 60, left: PANEL_W + 32, right: 60 };
+
+const fitBox = (box: [number, number, number, number], maxZoom?: number) => {
+  const [w, s_, e, n] = box;
+  // maplibre copies an explicit `maxZoom: undefined` over its own default and
+  // then takes Math.min against it, giving NaN and a camera that never moves.
+  mapAfter.fitBounds([[w, s_], [e, n]], {
+    padding: fitPadding(),
+    duration: 900,
+    ...(maxZoom === undefined ? {} : { maxZoom }),
+  });
 };
-setStep(1, "active");
 
-// ---------- drawing ----------
+// ---------- state ----------
 
 let ring: Ring = [];
+let site: Site | null = null;
 let scenes: { before: Scene; after: Scene } | null = null;
 let stats: { before: Stats; after: Stats } | null = null;
 let measured: ChangeMeasure | null = null;
 
+let thenYear = 2019;
+let nowYear: number | "latest" = 2025;
+
 const threshold = () => Number($<HTMLInputElement>("threshold").value) / 100;
 
-const draw = new PolygonDraw([mapBefore, mapAfter], (next, drawing) => {
-  ring = next;
-  const closed = !drawing && ring.length >= 3;
-
-  $("area-readout").hidden = ring.length < 3;
-  if (ring.length >= 3) {
-    $("area-val").textContent = formatArea(ringArea(ring));
-    $("vertex-val").textContent = String(ring.length);
-  }
-
-  $<HTMLButtonElement>("btn-clear").disabled = ring.length === 0;
-  $<HTMLButtonElement>("btn-search").disabled = !closed;
-
-  if (closed) {
-    setStep(1, "done");
-    setStep(2, "active");
-    $("draw-help").textContent = "Outline closed. Adjust the windows below, or redraw.";
-  }
-});
-
-$("btn-draw").addEventListener("click", () => {
-  draw.start();
-  setStep(1, "active");
-  setStep(2, null);
-  setStep(3, null);
-  $("draw-help").textContent =
-    "Click to place corners. Press Enter or click the first corner again to close.";
-});
-
-/** Drop every layer this run added, so nothing outlives the outline it describes. */
+/** Drop every layer a run added, so nothing outlives the outline it describes. */
 const dropLayer = (map: MLMap, id: string) => {
   if (map.getLayer(id)) map.removeLayer(id);
   if (map.getSource(id)) map.removeSource(id);
 };
 
-$("btn-clear").addEventListener("click", () => {
-  draw.clear();
-  ring = [];
+const MASK = "change-mask";
+
+function resetMap() {
   scenes = null;
   stats = null;
   measured = null;
-
-  // A stale red mask floating over no outline reads as a finding. Take it down.
   dropLayer(mapAfter, MASK);
   dropLayer(mapBefore, "img-before");
   dropLayer(mapAfter, "img-after");
-
-  $("area-readout").hidden = true;
-  $("packet").hidden = true;
-  $("packet-empty").hidden = false;
   $("swipe").hidden = true;
   $("stamp-before").hidden = true;
   $("stamp-after").hidden = true;
   $("legend").hidden = true;
-  $("mask-toggle").hidden = true;
-  $("search-status").hidden = true;
-  $("measure-status").hidden = true;
-  $("draw-help").textContent =
-    "Click to place corners on the map. Press Enter or click the first corner again to close the shape.";
-  $<HTMLButtonElement>("btn-search").disabled = true;
-  $<HTMLButtonElement>("btn-measure").disabled = true;
-  $<HTMLButtonElement>("btn-clear").disabled = true;
-  setStep(1, "active");
-  setStep(2, null);
-  setStep(3, null);
-  setStep(4, null);
+  $("run-status").hidden = true;
+}
+
+// ---------- where: pre-marked areas ----------
+
+const sitesEl = $("sites");
+for (const s of SITES) {
+  const b = document.createElement("button");
+  b.className = "site";
+  b.dataset.kind = s.kind;
+  b.innerHTML =
+    `<span class="site-label">${s.label}</span>` +
+    `<span class="site-place">${s.place}</span>` +
+    `<span class="site-blurb">${s.blurb}</span>`;
+  b.addEventListener("click", () => pickSite(s));
+  sitesEl.appendChild(b);
+}
+
+function pickSite(s: Site) {
+  site = s;
+  draw.set(s.ring);
+  fitBox(bbox(s.ring));
+  $("when-place").textContent = s.place;
+  show("when");
+  void run();
+}
+
+$("btn-back-where").addEventListener("click", () => {
+  resetMap();
+  show("where");
 });
+
+// ---------- drawing ----------
+
+const draw = new PolygonDraw([mapBefore, mapAfter], (next, drawing) => {
+  ring = next;
+  $("draw-count").textContent =
+    ring.length === 0
+      ? "Click the map to place the first corner"
+      : `${ring.length} corner${ring.length === 1 ? "" : "s"} placed${ring.length >= 3 ? ` · ${formatArea(ringArea(ring))}` : ""}`;
+  $<HTMLButtonElement>("btn-done").disabled = ring.length < 3;
+
+  if (screen !== "draw") return;
+  if (!drawing && ring.length >= 3) {
+    site = null;
+    $("when-place").textContent = `your outline, ${formatArea(ringArea(ring))}`;
+    show("when");
+    void run();
+  } else if (!drawing && ring.length === 0) {
+    show("where"); // Escape
+  }
+});
+
+const beginDrawing = () => {
+  resetMap();
+  show("draw");
+  draw.start();
+};
+
+$("btn-draw").addEventListener("click", beginDrawing);
+$("btn-done").addEventListener("click", () => draw.close());
+$("btn-cancel").addEventListener("click", () => draw.clear());
+
+// ---------- when: timeline ----------
+
+const chip = (label: string, on: () => void, extra = "") => {
+  const b = document.createElement("button");
+  b.className = `chip ${extra}`.trim();
+  b.textContent = label;
+  b.addEventListener("click", on);
+  return b;
+};
+
+const rowThen = $("row-then");
+const rowNow = $("row-now");
+const thenChips = new Map<number, HTMLButtonElement>();
+const nowChips = new Map<number | "latest", HTMLButtonElement>();
+
+for (const y of YEARS) {
+  thenChips.set(y, chip(String(y), () => { thenYear = y; paintChips(); void run(); }));
+  nowChips.set(y, chip(String(y), () => { nowYear = y; paintChips(); void run(); }));
+}
+nowChips.set("latest", chip("Latest pass", () => { nowYear = "latest"; paintChips(); void run(); }, "latest"));
+
+for (const b of thenChips.values()) rowThen.appendChild(b);
+for (const b of nowChips.values()) rowNow.appendChild(b);
+
+/** "Then" must come before "now"; the impossible chips are greyed, not hidden. */
+function paintChips() {
+  const nowNum = nowYear === "latest" ? Infinity : nowYear;
+  for (const [y, b] of thenChips) {
+    b.dataset.on = String(y === thenYear);
+    b.disabled = y >= nowNum;
+  }
+  for (const [y, b] of nowChips) {
+    b.dataset.on = String(y === nowYear);
+    b.disabled = y !== "latest" && y <= thenYear;
+  }
+}
+paintChips();
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+
+/** Walk back from today in 45-day windows until a clear pass turns up. */
+async function latestScene(box: [number, number, number, number]): Promise<Scene | null> {
+  const day = 864e5;
+  for (let back = 0; back < 420; back += 45) {
+    const to = new Date(Date.now() - back * day);
+    const from = new Date(to.getTime() - 45 * day);
+    const s = await findScene(box, isoDay(from), isoDay(to));
+    if (s) return s;
+  }
+  return null;
+}
 
 // ---------- imagery ----------
 
 const showScene = (map: MLMap, key: string, scene: Scene) => {
-  if (map.getLayer(key)) map.removeLayer(key);
-  if (map.getSource(key)) map.removeSource(key);
-
+  dropLayer(map, key);
   map.addSource(key, {
     type: "raster",
     tiles: [trueColourTiles(scene.id)],
@@ -197,47 +311,45 @@ const stamp = (id: string, label: string, scene: Scene) => {
   el.hidden = false;
 };
 
-// ---------- search ----------
+// ---------- the run: search, show, measure ----------
 
-$("btn-search").addEventListener("click", async () => {
-  const status = $("search-status");
-  const btn = $<HTMLButtonElement>("btn-search");
+let runId = 0;
 
-  status.hidden = false;
-  status.dataset.tone = "";
-  status.textContent = "Searching the Sentinel-2 archive…";
-  btn.disabled = true;
+const say = (text: string, tone: "" | "busy" | "error" = "busy") => {
+  const el = $("run-status");
+  el.hidden = false;
+  el.dataset.tone = tone;
+  el.textContent = text;
+};
 
+/**
+ * One click does the whole job. The visitor picked a place and two years;
+ * everything from here to the verdict is the tool's problem, not theirs.
+ */
+async function run() {
+  if (ring.length < 3) return;
+  const id = ++runId;
   const box = bbox(ring);
+  const nowLabel = nowYear === "latest" ? "the most recent clear pass" : `Nov–Dec ${nowYear}`;
 
   try {
+    say(`Searching the Sentinel-2 archive for ${nowLabel}…`);
     // Pin both dates to one MGRS tile, otherwise the two scenes cover
     // different ground and the comparison is meaningless.
-    const after = await findScene(
-      box,
-      $<HTMLInputElement>("after-from").value,
-      $<HTMLInputElement>("after-to").value,
-    );
+    const after = nowYear === "latest"
+      ? await latestScene(box)
+      : await findScene(box, `${nowYear}-11-01`, `${nowYear}-12-31`);
+    if (id !== runId) return;
     if (!after) {
-      status.dataset.tone = "error";
-      status.textContent = "No pass under 20% cloud in the after window. Widen it.";
-      btn.disabled = false;
+      say(`No pass under 20% cloud in ${nowLabel}. Monsoon, most likely — try a neighbouring year.`, "error");
       return;
     }
 
-    const before = await findScene(
-      box,
-      $<HTMLInputElement>("before-from").value,
-      $<HTMLInputElement>("before-to").value,
-      20,
-      after.mgrs,
-    );
+    say(`Found ${formatScene(after)} at ${after.cloud.toFixed(1)}% cloud. Matching it against ${thenYear}…`);
+    const before = await findScene(box, `${thenYear}-11-01`, `${thenYear}-12-31`, 20, after.mgrs);
+    if (id !== runId) return;
     if (!before) {
-      status.dataset.tone = "error";
-      status.textContent =
-        `No pass under 20% cloud over tile ${after.mgrs} in the before window. ` +
-        "Widen it — monsoon months rarely have one.";
-      btn.disabled = false;
+      say(`No clear pass over tile ${after.mgrs} in Nov–Dec ${thenYear}. Try a neighbouring year.`, "error");
       return;
     }
 
@@ -245,79 +357,33 @@ $("btn-search").addEventListener("click", async () => {
     showScene(mapAfter, "img-after", after);
     stamp("stamp-before", "Before", before);
     stamp("stamp-after", "After", after);
-
     $("swipe").hidden = false;
     split = 50;
     applySplit();
-
     scenes = { before, after };
-    measured = null;
-    $("packet").hidden = true;
-    $("packet-empty").hidden = false;
-    $<HTMLButtonElement>("btn-measure").disabled = false;
 
-    status.textContent = `Two clear passes over tile ${after.mgrs}. Drag the divider to compare.`;
-    setStep(2, "done");
-    setStep(3, "active");
+    say("Both passes on screen. Differencing every pixel inside the outline…");
+    const [m, sb, sa] = await Promise.all([
+      measureChange(ring, before.id, after.id, threshold()),
+      ndviStats(before.id, ring),
+      ndviStats(after.id, ring),
+    ]);
+    if (id !== runId) return;
+    measured = m;
+    stats = { before: sb, after: sa };
+
+    applyMask();
+    $("legend").hidden = false;
+    $<HTMLInputElement>("mask-on").checked = true;
+    fillVerdict();
+    $("run-status").hidden = true;
+    show("verdict");
   } catch (err) {
-    status.dataset.tone = "error";
-    status.textContent = `Search failed: ${(err as Error).message}`;
-  } finally {
-    btn.disabled = false;
+    if (id === runId) say(`Something broke: ${(err as Error).message}`, "error");
   }
-});
-
-// ---------- evidence packet ----------
-
-
-
-applySplit();
-
-// ---------- framing ----------
-
-/**
- * The panel covers the left of the screen on desktop and the bottom on mobile.
- * A symmetric padding therefore centres the site under the panel, and on a
- * narrow screen a fixed 120px inset overshoots the zoom entirely.
- */
-const fitPadding = () =>
-  window.innerWidth <= 720
-    ? { top: 56, bottom: Math.round(window.innerHeight * 0.62) + 24, left: 24, right: 24 }
-    : { top: 60, bottom: 60, left: 416, right: 60 };
-
-const fitBox = (box: [number, number, number, number], maxZoom?: number) => {
-  const [w, s_, e, n] = box;
-  // maplibre copies an explicit `maxZoom: undefined` over its own default and
-  // then takes Math.min against it, giving NaN and a camera that never moves.
-  mapAfter.fitBounds([[w, s_], [e, n]], {
-    padding: fitPadding(),
-    duration: 700,
-    ...(maxZoom === undefined ? {} : { maxZoom }),
-  });
-};
-
-// ---------- presets ----------
-
-for (const btn of document.querySelectorAll<HTMLButtonElement>(".chip")) {
-  btn.addEventListener("click", () => {
-    const preset = PRESETS[btn.dataset.preset!];
-    draw.set(preset.ring);
-    fitBox(bbox(preset.ring));
-    $("draw-help").textContent = `Loaded ${preset.label}. Redraw to adjust it.`;
-  });
 }
 
-// ---------- threshold ----------
-
-const thresholdEl = $<HTMLInputElement>("threshold");
-thresholdEl.addEventListener("input", () => {
-  $("threshold-val").textContent = threshold().toFixed(2);
-  if (scenes && !$("mask-toggle").hidden) applyMask();
-});
-
 // ---------- change mask ----------
-
-const MASK = "change-mask";
 
 /**
  * The mask belongs on the after map only: it describes what the ground lost
@@ -326,17 +392,15 @@ const MASK = "change-mask";
  */
 function applyMask() {
   if (!scenes) return;
-  const map = mapAfter;
-  if (map.getLayer(MASK)) map.removeLayer(MASK);
-  if (map.getSource(MASK)) map.removeSource(MASK);
-  map.addSource(MASK, {
+  dropLayer(mapAfter, MASK);
+  mapAfter.addSource(MASK, {
     type: "raster",
     tiles: [maskTiles(scenes.before.id, scenes.after.id, threshold(), ring)],
     tileSize: 256,
   });
-  map.addLayer({ id: MASK, type: "raster", source: MASK });
+  mapAfter.addLayer({ id: MASK, type: "raster", source: MASK });
   for (const id of ["draw-fill", "draw-line", "draw-verts"]) {
-    if (map.getLayer(id)) map.moveLayer(id);
+    if (mapAfter.getLayer(id)) mapAfter.moveLayer(id);
   }
 }
 
@@ -348,47 +412,21 @@ $("mask-on").addEventListener("change", (e) => {
   $("legend").hidden = !on;
 });
 
-// ---------- measure ----------
-
-$("btn-measure").addEventListener("click", async () => {
+const thresholdEl = $<HTMLInputElement>("threshold");
+thresholdEl.addEventListener("input", () => {
+  $("threshold-val").textContent = threshold().toFixed(2);
+  if (scenes) applyMask();
+});
+// Re-measure on release, not on every tick — each measure pulls tiles.
+thresholdEl.addEventListener("change", async () => {
   if (!scenes) return;
-  const status = $("measure-status");
-  const btn = $<HTMLButtonElement>("btn-measure");
-
-  status.hidden = false;
-  status.dataset.tone = "";
-  status.textContent = "Differencing both dates in the browser…";
-  btn.disabled = true;
-
-  try {
-    const [m, sb, sa] = await Promise.all([
-      measureChange(ring, scenes.before.id, scenes.after.id, threshold()),
-      ndviStats(scenes.before.id, ring),
-      ndviStats(scenes.after.id, ring),
-    ]);
-    measured = m;
-    stats = { before: sb, after: sa };
-
-    applyMask();
-    $("mask-toggle").hidden = false;
-    $("legend").hidden = false;
-    $<HTMLInputElement>("mask-on").checked = true;
-
-    fillPacket();
-    status.textContent = `${m.sampled.toLocaleString("en-IN")} pixels compared at ${m.pixelM.toFixed(1)} m.`;
-    setStep(3, "done");
-    setStep(4, "active");
-  } catch (err) {
-    status.dataset.tone = "error";
-    status.textContent = `Analysis failed: ${(err as Error).message}`;
-  } finally {
-    btn.disabled = false;
-  }
+  measured = await measureChange(ring, scenes.before.id, scenes.after.id, threshold());
+  fillVerdict();
 });
 
-// ---------- evidence ----------
+// ---------- verdict ----------
 
-function fillPacket() {
+function fillVerdict() {
   if (!scenes || !stats || !measured) return;
   const { before, after } = scenes;
 
@@ -406,29 +444,37 @@ function fillPacket() {
   const { signal, ratio } = classify(measured);
   head.dataset.tone = signal === "directional" ? "" : "quiet";
 
-  const window_ = `${formatScene(before)} and ${formatScene(after)}`;
+  const where = site ? site.place : "this outline";
+  const span = `${formatScene(before)} → ${formatScene(after)}`;
   head.innerHTML =
     signal === "none"
-      ? `No meaningful loss of cover. <b>${measured.lossPct.toFixed(1)}%</b> of this outline changed between ${window_} — consistent with ground that did not change.`
+      ? `<span class="big">${measured.lossPct.toFixed(1)}%</span>` +
+        `No meaningful loss at <b>${where}</b>, ${span}. This is what ground that was left alone looks like.`
       : signal === "noise"
-        ? `<b>${measured.lossPct.toFixed(1)}%</b> lost cover, but gains almost match it. Symmetric change like this is what season and sampling look like, not clearing.`
-        : `<b>${formatArea(measured.lossM2)}</b> of this outline lost vegetation cover between ` +
-          `${window_} — <b>${measured.lossPct.toFixed(1)}%</b> of the site, and losses outrun ` +
-          `gains <b>${ratio === Infinity ? "entirely" : `${ratio.toFixed(1)}:1`}</b>.`;
+        ? `<span class="big">${measured.lossPct.toFixed(1)}%</span>` +
+          `lost cover at <b>${where}</b>, but gains almost match it. Symmetric change is season and sampling, not clearing.`
+        : `<span class="big">${formatArea(measured.lossM2)}</span>` +
+          `of <b>${where}</b> lost vegetation cover, ${span} — <b>${measured.lossPct.toFixed(1)}%</b> of the area, ` +
+          `with losses outrunning gains <b>${ratio === Infinity ? "entirely" : `${ratio.toFixed(1)} : 1`}</b>.`;
 
   $("m-loss").textContent = formatArea(measured.lossM2);
   $("m-pct").textContent = `${measured.lossPct.toFixed(1)}%`;
-  $("m-gain").textContent = formatArea(measured.gainM2);
   $("m-px").textContent = ratio === Infinity ? "loss only" : `${ratio.toFixed(1)} : 1`;
 
   const [w, s_, e, n] = bbox(ring);
   $("packet-coords").innerHTML =
     `Outline ${ring.length} corners · ${formatArea(ringArea(ring))}<br />` +
-    `bbox ${w.toFixed(5)}, ${s_.toFixed(5)} → ${e.toFixed(5)}, ${n.toFixed(5)}`;
-
-  $("packet").hidden = false;
-  $("packet-empty").hidden = true;
+    `bbox ${w.toFixed(5)}, ${s_.toFixed(5)} → ${e.toFixed(5)}, ${n.toFixed(5)}` +
+    (site && site.source.url
+      ? `<br />Record: <a href="${site.source.url}" target="_blank" rel="noopener">${site.source.name}</a>`
+      : "");
 }
+
+$("btn-again-year").addEventListener("click", () => show("when"));
+$("btn-again-place").addEventListener("click", () => {
+  resetMap();
+  show("where");
+});
 
 // ---------- export ----------
 
@@ -459,8 +505,6 @@ $("btn-export").addEventListener("click", () => {
   w.document.close();
 });
 
-applySplit();
-
 // ---------- place search ----------
 
 const results = $<HTMLUListElement>("results");
@@ -484,13 +528,10 @@ $("find").addEventListener("submit", async (e) => {
       const li = document.createElement("li");
       li.textContent = place.label;
       li.addEventListener("click", () => {
-        if (place.bbox) {
-          fitBox(place.bbox, 15.5);
-        } else {
-          mapAfter.flyTo({ center: [place.lon, place.lat], zoom: 14.5 });
-        }
+        if (place.bbox) fitBox(place.bbox, 15.5);
+        else mapAfter.flyTo({ center: [place.lon, place.lat], zoom: 14.5 });
         results.hidden = true;
-        $("draw-help").textContent = "Now outline the site: click corners, Enter to close.";
+        beginDrawing();
       });
       results.appendChild(li);
     }

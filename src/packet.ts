@@ -36,7 +36,7 @@ export function packetHtml(p: PacketInput): string {
 
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
-<title>Groundproof — evidence packet</title>
+<title>Aravalli Watch — evidence packet</title>
 <style>
   @page { margin: 18mm; }
   * { box-sizing: border-box; }
