@@ -181,9 +181,10 @@ body {
 
 .screen h2 {
   margin: 0;
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+  font-size: 25px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
 .help {
@@ -365,9 +366,9 @@ button:disabled { opacity: 0.42; cursor: not-allowed; }
   display: grid;
   gap: 3px;
   padding: 13px 15px;
-  border: 1px solid var(--line);
+  border: 1px dashed var(--faint);
   border-radius: 12px;
-  background: var(--card);
+  background: var(--paper);
   color: var(--ink);
   font-weight: 400;
   transition: border-color 0.14s ease, background 0.14s ease;
@@ -376,8 +377,9 @@ button:disabled { opacity: 0.42; cursor: not-allowed; }
 .elsewhere > summary::before,
 .elsewhere[open] > summary::before { content: none; }
 .elsewhere > summary:hover { border-color: var(--ink); background: var(--paper); }
-.elsewhere > summary .site-label { color: var(--muted); }
-.elsewhere[open] > summary { border-color: var(--ink); border-radius: 12px 12px 0 0; }
+.elsewhere > summary .site-label { color: var(--ink); }
+.elsewhere > summary .site-label::before { content: "\2295  "; font-weight: 400; }
+.elsewhere[open] > summary { border-color: var(--ink); border-bottom-style: solid; border-bottom-color: var(--line); border-radius: 12px 12px 0 0; }
 
 .elsewhere[open] > summary + * { margin-top: 0; }
 
@@ -387,7 +389,8 @@ button:disabled { opacity: 0.42; cursor: not-allowed; }
 
 .elsewhere-body {
   padding: 12px 15px 15px;
-  border: 1px solid var(--ink);
+  background: var(--paper);
+  border: 1px dashed var(--ink);
   border-top: 0;
   border-radius: 0 0 12px 12px;
 }
